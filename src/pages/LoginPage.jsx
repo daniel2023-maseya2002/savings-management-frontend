@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
 export default function LoginPage() {
@@ -30,16 +30,33 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit}>
         <div>
           <label>Username</label>
-          <input required value={username} onChange={(e) => setUsername(e.target.value)} />
+          <input
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
         </div>
         <div style={{ marginTop: 8 }}>
           <label>Password</label>
-          <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input
+            required
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
         <div style={{ marginTop: 12 }}>
-          <button type="submit" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Signing in..." : "Sign in"}
+          </button>
         </div>
       </form>
+
+      {/* 👇 Forgot Password Link */}
+      <div style={{ marginTop: 16 }}>
+        <Link to="/otp/request">Forgot your password?</Link>
+    </div>
+
     </div>
   );
 }
