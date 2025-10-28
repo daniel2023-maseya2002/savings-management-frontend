@@ -1,11 +1,13 @@
 import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import axios from "../api/axios";
 import { AuthContext } from "../context/AuthContext";
 
 export default function Dashboard() {
-  const { user } = useContext(AuthContext);
+  const { user, refreshUser } = useContext(AuthContext);
   const [transactions, setTransactions] = useState([]);
+  const LOW_BALANCE_THRESHOLD = 100.0; // set to what makes sense
 
   useEffect(() => {
     const load = async () => {
@@ -20,11 +22,24 @@ export default function Dashboard() {
     load();
   }, []);
 
+  useEffect(() => {
+    // check for low balance and notify (simple client-side alert)
+    if (user && Number(user.balance) < LOW_BALANCE_THRESHOLD) {
+      toast.warn(`Low balance: ${user.balance}. Consider depositing.`);
+    }
+  }, [user]);
+
+  const handleManualRefresh = async () => {
+    await refreshUser();
+    toast.success("Balance refreshed");
+  };
+
   return (
     <div style={{ padding: 20 }}>
       <h1>Welcome, {user?.username}</h1>
       <p>Email: {user?.email}</p>
       <p>Balance: {user?.balance}</p>
+      <button onClick={handleManualRefresh}>Refresh balance</button>
 
       <h3>Recent transactions</h3>
       <ul>
