@@ -7,7 +7,7 @@ import { AuthContext } from "../context/AuthContext";
 export default function Dashboard() {
   const { user, refreshUser } = useContext(AuthContext);
   const [transactions, setTransactions] = useState([]);
-  const LOW_BALANCE_THRESHOLD = 100.0; // set to what makes sense
+  const LOW_BALANCE_THRESHOLD = 100.0; // adjust as needed
 
   useEffect(() => {
     const load = async () => {
@@ -23,11 +23,36 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    // check for low balance and notify (simple client-side alert)
+    // client-side balance warning
     if (user && Number(user.balance) < LOW_BALANCE_THRESHOLD) {
       toast.warn(`Low balance: ${user.balance}. Consider depositing.`);
     }
   }, [user]);
+
+  // ✅ NEW SNIPPET: check for low-balance notifications from backend
+  useEffect(() => {
+    let mounted = true;
+    const checkAlerts = async () => {
+      try {
+        const res = await axios.get("/notifications/");
+        const list = res.data.results ?? res.data;
+        const low = list.find(
+          (n) =>
+            n.title.toLowerCase().includes("low balance") ||
+            (n.data && n.data.type === "low_balance")
+        );
+        if (low && mounted) {
+          toast.warn(low.body, { autoClose: 10000 });
+        }
+      } catch (err) {
+        // ignore silently
+      }
+    };
+    checkAlerts();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleManualRefresh = async () => {
     await refreshUser();
@@ -44,7 +69,10 @@ export default function Dashboard() {
       <h3>Recent transactions</h3>
       <ul>
         {transactions.map((t) => (
-          <li key={t.id}>{t.tx_type} - {t.amount} - {new Date(t.created_at).toLocaleString()}</li>
+          <li key={t.id}>
+            {t.tx_type} - {t.amount} -{" "}
+            {new Date(t.created_at).toLocaleString()}
+          </li>
         ))}
       </ul>
 
