@@ -1,184 +1,125 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "../api/axios";
-
-// 🔧 Utility to get or create device_id
-const getDeviceId = () => {
-  let id = localStorage.getItem("device_id");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("device_id", id);
-  }
-  return id;
-};
+import AuthLayout from "../layouts/AuthLayout";
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
   const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
-    confirmPassword: "",
+    confirm_password: "",
   });
   const [loading, setLoading] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
-  const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
 
   const onChange = (e) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
-  const validate = () => {
-    const e = {};
-    if (!form.username.trim()) e.username = "Username is required";
-    if (!form.email.trim()) e.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Invalid email";
-    if (!form.password) e.password = "Password is required";
-    else if (form.password.length < 8) e.password = "Min 8 characters";
-    if (!form.confirmPassword) e.confirmPassword = "Please confirm password";
-    else if (form.password !== form.confirmPassword)
-      e.confirmPassword = "Passwords do not match";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+
+    if (!form.username || !form.email || !form.password || !form.confirm_password)
+      return toast.error("Please fill in all fields.");
+
+    if (form.password !== form.confirm_password)
+      return toast.error("Passwords do not match.");
+
     setLoading(true);
-
     try {
-      const deviceId = getDeviceId(); // ✅ auto handle device_id
-
-      await axios.post("/auth/register/", {
-        username: form.username.trim(),
-        email: form.email.trim(),
-        password: form.password,
-        confirm_password: form.confirmPassword, // Django field name
-        device_id: deviceId,
-      });
-
-      toast.success("Account created! Awaiting admin approval.");
+      await axios.post("/auth/register/", form);
+      toast.success("Account created successfully!");
       navigate("/login");
     } catch (err) {
-      const msg =
-        err?.response?.data?.detail ||
-        err?.response?.data?.error ||
-        "Registration failed";
-      toast.error(msg);
-
-      const fe = {};
-      const data = err?.response?.data || {};
-      ["username", "email", "password", "confirm_password"].forEach((k) => {
-        if (Array.isArray(data[k]) && data[k].length) fe[k] = data[k][0];
-      });
-      setErrors(fe);
+      toast.error(err?.response?.data?.detail || "Registration failed.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      style={{
-        maxWidth: 420,
-        margin: "60px auto",
-        padding: 24,
-        border: "1px solid #ccc",
-        borderRadius: 12,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-      }}
+    <AuthLayout
+      title="Create Your Account ✨"
+      subtitle="Join the future of digital banking — it only takes a minute."
     >
-      <h2 style={{ textAlign: "center" }}>Create your account</h2>
-
-      <form onSubmit={onSubmit}>
-        {/* Username */}
-        <label>
-          Username
+      <form onSubmit={onSubmit} className="space-y-5">
+        <div>
+          <label className="text-gray-200 text-sm mb-2 block font-medium">
+            Username
+          </label>
           <input
             name="username"
             value={form.username}
             onChange={onChange}
-            placeholder="e.g. dan"
-            autoComplete="username"
+            placeholder="Choose a username"
+            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-400 outline-none"
           />
-          {errors.username && <small style={{ color: "red" }}>{errors.username}</small>}
-        </label>
+        </div>
 
-        {/* Email */}
-        <label>
-          Email
+        <div>
+          <label className="text-gray-200 text-sm mb-2 block font-medium">
+            Email
+          </label>
           <input
             name="email"
             type="email"
             value={form.email}
             onChange={onChange}
-            placeholder="you@example.com"
-            autoComplete="email"
+            placeholder="Enter your email"
+            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-400 outline-none"
           />
-          {errors.email && <small style={{ color: "red" }}>{errors.email}</small>}
-        </label>
+        </div>
 
-        {/* Password */}
-        <label>
-          Password
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              name="password"
-              type={showPwd ? "text" : "password"}
-              value={form.password}
-              onChange={onChange}
-              placeholder="At least 8 characters"
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPwd((s) => !s)}
-              style={{ padding: "6px 10px" }}
-            >
-              {showPwd ? "Hide" : "Show"}
-            </button>
-          </div>
-          {errors.password && <small style={{ color: "red" }}>{errors.password}</small>}
-        </label>
-
-        {/* Confirm Password */}
-        <label>
-          Confirm Password
+        <div>
+          <label className="text-gray-200 text-sm mb-2 block font-medium">
+            Password
+          </label>
           <input
-            name="confirmPassword"
+            name="password"
             type="password"
-            value={form.confirmPassword}
+            value={form.password}
             onChange={onChange}
-            placeholder="Re-enter password"
+            placeholder="Create a password"
+            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-400 outline-none"
           />
-          {errors.confirmPassword && (
-            <small style={{ color: "red" }}>{errors.confirmPassword}</small>
-          )}
-        </label>
+        </div>
+
+        <div>
+          <label className="text-gray-200 text-sm mb-2 block font-medium">
+            Confirm Password
+          </label>
+          <input
+            name="confirm_password"
+            type="password"
+            value={form.confirm_password}
+            onChange={onChange}
+            placeholder="Confirm your password"
+            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-400 outline-none"
+          />
+        </div>
 
         <button
           type="submit"
           disabled={loading}
-          style={{
-            width: "100%",
-            marginTop: 16,
-            padding: 12,
-            background: "#1976d2",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-          }}
+          className={`w-full py-2.5 rounded-lg font-semibold text-white transition ${
+            loading
+              ? "bg-emerald-700 cursor-not-allowed"
+              : "bg-emerald-500 hover:bg-emerald-600"
+          }`}
         >
-          {loading ? "Creating..." : "Sign Up"}
+          {loading ? "Creating..." : "Create Account"}
         </button>
       </form>
 
-      <div style={{ marginTop: 16, textAlign: "center" }}>
-        Already have an account? <Link to="/login">Log in</Link>
+      <div className="text-center mt-6 text-sm text-emerald-300">
+        Already have an account?{" "}
+        <Link to="/login" className="underline hover:text-emerald-200">
+          Log in
+        </Link>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

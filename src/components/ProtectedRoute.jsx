@@ -1,3 +1,4 @@
+// src/components/ProtectedRoute.jsx
 import React, { useContext } from "react";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
@@ -5,11 +6,12 @@ import { AuthContext } from "../context/AuthContext";
 export default function ProtectedRoute({ children }) {
   const { user } = useContext(AuthContext);
 
-  // If no user found → redirect to login
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  // 🚪 Not logged in → go to login
+  if (!user) return <Navigate to="/login" replace />;
 
-  // Otherwise render the protected children
+  // 🚫 Admins shouldn't see user pages
+  if (user.is_staff) return <Navigate to="/admin" replace />;
+
+  // ✅ Regular user can access
   return children;
 }

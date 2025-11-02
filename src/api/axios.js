@@ -1,5 +1,6 @@
 import axios from "axios";
 import { toast } from "react-toastify";
+import { setupAxiosInterceptors } from "../utils/axiosLoading";
 
 // ✅ Base URL — works in both Vite and CRA
 const API_BASE =
@@ -7,11 +8,15 @@ const API_BASE =
   process.env.REACT_APP_API_BASE_URL ||
   "http://127.0.0.1:8000/api";
 
+// ✅ Create axios instance first
 const axiosInstance = axios.create({
   baseURL: API_BASE,
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
+
+// ✅ Now safely call setupAxiosInterceptors
+setupAxiosInterceptors(axiosInstance);
 
 // ✅ Token utilities
 export const tokenService = {
