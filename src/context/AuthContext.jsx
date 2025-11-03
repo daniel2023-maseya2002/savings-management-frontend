@@ -5,29 +5,36 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // 🟢 Add loading
 
   // 🔄 Restore user + tokens on app load
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem("user_info");
-      const tokens = {
-        access: tokenService.getAccess(),
-        refresh: tokenService.getRefresh(),
-      };
+    const restoreAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem("user_info");
+        const tokens = {
+          access: tokenService.getAccess(),
+          refresh: tokenService.getRefresh(),
+        };
 
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
 
-      if (tokens?.access) {
-        axiosInstance.defaults.headers.common.Authorization = `Bearer ${tokens.access}`;
+        if (tokens?.access) {
+          axiosInstance.defaults.headers.common.Authorization = `Bearer ${tokens.access}`;
+        }
+      } catch (err) {
+        console.error("⚠️ Failed to restore auth state:", err);
+        localStorage.removeItem("user_info");
+        tokenService.clear();
+        setUser(null);
+      } finally {
+        setLoading(false); // 🟢 Important: stop loading
       }
-    } catch (err) {
-      console.error("⚠️ Failed to restore auth state:", err);
-      localStorage.removeItem("user_info");
-      tokenService.clear();
-      setUser(null);
-    }
+    };
+
+    restoreAuth();
   }, []);
 
   // 🧭 Sync user in memory and localStorage
@@ -81,6 +88,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        loading, // 🟢 Expose loading
         setUser: syncLocalUser,
         login,
         logout,

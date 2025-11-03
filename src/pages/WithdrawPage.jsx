@@ -40,7 +40,7 @@ export default function WithdrawPage() {
       await axios.post("/savings/withdraw/", { amount: amt });
       toast.success(`Withdrawal of ${amt} successful 💸`);
       await refreshUser();
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       const data = err.response?.data;
       let msg = "Withdrawal failed. Try again.";

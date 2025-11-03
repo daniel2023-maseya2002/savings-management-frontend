@@ -25,7 +25,7 @@ export default function DepositPage() {
       await axios.post("/savings/deposit/", { amount, currency });
       toast.success(`Deposit of ${amount} ${currency} successful 🎉`);
       await refreshUser();
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       const msg = err?.response?.data?.detail || "Deposit failed. Try again.";
       toast.error(msg);

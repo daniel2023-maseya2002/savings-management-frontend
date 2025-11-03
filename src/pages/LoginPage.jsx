@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axiosInstance from "../api/axios";
@@ -41,9 +41,9 @@ export default function LoginPage() {
 
       // ✅ Redirect based on role
       if (res.data?.is_staff) {
-        navigate("/admin"); // Admin dashboard
+        navigate("/admin");
       } else {
-        navigate("/"); // Normal user dashboard
+        navigate("/dashboard");
       }
 
     } catch (err) {

@@ -1,16 +1,15 @@
-// src/components/AdminRoute.jsx
-import React from "react";
+import { useContext } from "react";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
 export default function AdminRoute({ children }) {
-  const { user, loading } = React.useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
 
-  // 🕐 Wait until AuthContext finishes loading
+  // 🕐 Wait until user info is restored
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center text-gray-300">
-        Checking admin access...
+        Loading admin panel...
       </div>
     );
   }
@@ -19,8 +18,8 @@ export default function AdminRoute({ children }) {
   if (!user) return <Navigate to="/login" replace />;
 
   // ⚠️ Logged in but not admin → redirect to user dashboard
-  if (!user.is_staff) return <Navigate to="/" replace />;
+  if (!user.is_staff) return <Navigate to="/dashboard" replace />;
 
-  // ✅ Allowed → render children
+  // ✅ Admin allowed
   return children;
 }
