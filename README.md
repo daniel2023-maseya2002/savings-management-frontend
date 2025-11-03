@@ -1,16 +1,105 @@
-# React + Vite
+Frontend — CreditJambo Web App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Tailwind + Framer Motion + Axios + JWT Auth
 
-Currently, two official plugins are available:
+📌 Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Modern web banking interface featuring:
 
-## React Compiler
+User dashboard & analytics charts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Admin dashboard & control panel
 
-## Expanding the ESLint configuration
+Deposit + withdraw UI flows
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Device monitoring + security UI
+
+Landing page with 3D coins & parallax
+
+Theme toggle (Dark / Light)
+
+Toast messages & loading overlay
+
+🧠 Tech Stack
+Tech	Purpose
+React + Vite	Frontend framework
+Tailwind CSS	UI styling
+Framer Motion	Smooth animations
+Axios + Interceptors	API + Auth refresh
+React Router	Navigation
+Recharts	Charts & graphs
+Toastify	Notifications
+📂 Folder Structure
+frontend/
+ ┣ src/
+ ┃ ┣ pages/
+ ┃ ┣ components/
+ ┃ ┣ context/         # Auth + Theme context
+ ┃ ┣ api/axios.js
+ ┃ ┣ utils/
+ ┃ ┗ styles/
+ ┗ vite.config.js
+
+⚙️ Installation
+1️⃣ Install packages
+cd frontend
+npm install
+
+2️⃣ Environment Config
+
+Create .env:
+
+VITE_API_BASE=http://127.0.0.1:8000/api
+
+3️⃣ Run Dev Server
+npm run dev
+
+🔐 Authentication
+
+JWT is stored in localStorage
+
+Automatic token refresh
+
+Device ID stored in localStorage
+
+Admin vs User routing logic
+
+🧭 Routes
+Route	Role
+/	Landing page
+/login	Auth
+/dashboard	User home
+/admin	Admin dashboard
+/deposit, /withdraw	User actions
+/devices	Device security screen
+🎥 UI Preview Features
+
+Parallax gradients
+
+Glass-effect UI
+
+Animated loading overlay
+
+3D floating coin effects
+
+Animated counters & charts
+
+✅ Security Frontend-Side
+
+ProtectedRoute wrapper
+
+AdminRoute guard
+
+JWT refresh queue system
+
+Logout on refresh failure
+
+🧾 Scripts
+Command	Action
+npm run dev	Start dev server
+npm run build	Build for production
+npm run preview	Preview build
+🙌 Credits
+
+Built by Daniel Maseya Mubu — Kigali, Rwanda
+Full-Stack & UX designer
