@@ -1,3 +1,4 @@
+// src/components/TopNav.jsx
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell, LogOut, Menu } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
@@ -89,6 +90,8 @@ export default function TopNav() {
               <NavLink to="/transactions" label="Transactions" />
               <NavLink to="/deposit" label="Deposit" />
               <NavLink to="/withdraw" label="Withdraw" />
+              {/* Chat link for regular users */}
+              <NavLink to="/chat" label="Chat" />
             </>
           ) : (
             <>
@@ -97,6 +100,8 @@ export default function TopNav() {
               <NavLink to="/admin/devices" label="Devices" />
               <NavLink to="/admin/analytics" label="Analytics" />
               <NavLink to="/admin/logins" label="Logins" />
+              {/* Admin Chat link */}
+              <NavLink to="/admin/chat" label="Admin Chat" />
             </>
           )}
         </div>
@@ -156,9 +161,7 @@ export default function TopNav() {
                               })}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-400 mt-1">
-                            {n.body}
-                          </p>
+                          <p className="text-sm text-gray-400 mt-1">{n.body}</p>
                           {!n.read && (
                             <button
                               onClick={() => markAsRead(n.id)}
@@ -227,6 +230,8 @@ export default function TopNav() {
                       <NavLink to="/transactions" label="Transactions" />
                       <NavLink to="/deposit" label="Deposit" />
                       <NavLink to="/withdraw" label="Withdraw" />
+                      {/* Chat link for regular users (mobile) */}
+                      <NavLink to="/chat" label="Chat" />
                     </>
                   ) : (
                     <>
@@ -234,6 +239,8 @@ export default function TopNav() {
                       <NavLink to="/admin/users" label="Users" />
                       <NavLink to="/admin/devices" label="Devices" />
                       <NavLink to="/admin/analytics" label="Analytics" />
+                      {/* Admin Chat link (mobile) */}
+                      <NavLink to="/admin/chat" label="Admin Chat" />
                     </>
                   )}
                   <button

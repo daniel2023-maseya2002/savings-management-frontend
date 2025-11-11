@@ -17,6 +17,12 @@ import AppLayout from "./components/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoadingOverlay from "./components/ui/LoadingOverlay";
 
+// Chat components (NEW)
+import ChatBot from "./components/ui/chatbot"; // floating widget (for non-admin users)
+import AdminChatViewer from "./pages/AdminChatViewer";
+import UserChatbot from "./pages/UserChatbot";
+import HistoryChatbot from "./pages/historyChatbot";
+
 // Pages
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -148,6 +154,28 @@ function AppContent() {
           }
         />
 
+        {/* === Chat routes for regular users === */}
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <UserChatbot />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat/history"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <HistoryChatbot />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* 🧭 Admin Routes */}
         <Route
           path="/admin"
@@ -211,6 +239,18 @@ function AppContent() {
           }
         />
 
+        {/* ✅ Admin Chat viewer */}
+        <Route
+          path="/admin/chat"
+          element={
+            <AdminRoute>
+              <AppLayout>
+                <AdminChatViewer />
+              </AppLayout>
+            </AdminRoute>
+          }
+        />
+
         {/* 🚫 404 Fallback */}
         <Route
           path="*"
@@ -221,6 +261,10 @@ function AppContent() {
           }
         />
       </Routes>
+
+      {/* Floating chat widget visible only for logged-in non-admin users */}
+      {user && !user.is_staff && <ChatBot />}
+
     </>
   );
 }
