@@ -1,16 +1,17 @@
-// src/components/ui/chatbot.jsx
 import { useEffect, useRef, useState } from "react";
 import { ENDPOINTS, apiGet, apiPost, clearAuth } from "../../lib/chatAuth";
 
 /**
  * ChatBot (floating widget)
- * Modern dark theme with improved UI/UX
+ * - Now caches per-user conversations
+ * - Auto-clears on logout
+ * - Dark theme with clean modern design
  *
  * Props:
- * - floatRight (bool) : whether widget floats on right (default true)
- * - width (number) : width in px (default 360)
- * - height (number) : height in px (default 520)
- * - pageSize (number) : history page size to request (default 50)
+ * - floatRight (bool)
+ * - width (number)
+ * - height (number)
+ * - pageSize (number)
  */
 export default function ChatBot({
   floatRight = true,
@@ -19,27 +20,45 @@ export default function ChatBot({
   pageSize = 50,
 }) {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("chat_ui_cache") || "[]");
-    } catch {
-      return [];
-    }
-  });
+  const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const boxRef = useRef(null);
 
-  useEffect(() => {
-    // persist UI cache so small refreshes keep state
+  // ✅ Identify current user for isolated localStorage key
+  const userInfo = (() => {
     try {
-      localStorage.setItem("chat_ui_cache", JSON.stringify(messages));
+      return JSON.parse(localStorage.getItem("user_info") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+
+  const userKey = userInfo?.id
+    ? `chat_ui_cache_${userInfo.id}`
+    : "chat_ui_cache_guest";
+
+  // ✅ Load cached messages for this specific user
+  useEffect(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(userKey) || "[]");
+      setMessages(Array.isArray(cached) ? cached : []);
+    } catch {
+      setMessages([]);
+    }
+  }, [userKey]);
+
+  // ✅ Save cache on every message update
+  useEffect(() => {
+    try {
+      localStorage.setItem(userKey, JSON.stringify(messages));
     } catch {}
     if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
-  }, [messages]);
+  }, [messages, userKey]);
 
+  // ✅ Load server history when opened
   useEffect(() => {
     if (open) loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -50,25 +69,27 @@ export default function ChatBot({
     setError("");
     try {
       const data = await apiGet(ENDPOINTS.HISTORY, { page: 1, page_size: pageSize });
-      // data may be paginated object or simple array
       const list = Array.isArray(data) ? data : data.results || [];
+
       const mapped = list
         .slice()
         .reverse()
         .map((item) =>
           item.user_message
-            ? [{ sender: "user", text: item.user_message }, { sender: "bot", text: item.bot_reply }]
+            ? [
+                { sender: "user", text: item.user_message },
+                { sender: "bot", text: item.bot_reply },
+              ]
             : [{ sender: "bot", text: item.bot_reply }]
         )
         .flat();
+
       setMessages((prev) => {
-        // keep optimistic in-flight messages (marked with _temp) and merge history before them
         const merged = [...mapped, ...prev.filter((m) => !m._temp)];
         return merged;
       });
     } catch (err) {
-      // axios errors surface here; check response status if present
-      const status = err && err.response && err.response.status;
+      const status = err?.response?.status;
       if (status === 401) {
         setError("Authentication required. Please login again.");
         clearAuth();
@@ -89,22 +110,26 @@ export default function ChatBot({
     const userEntry = { sender: "user", text: messageText, _temp: true };
     setMessages((m) => [...m, userEntry]);
     setText("");
+
     try {
       const data = await apiPost(ENDPOINTS.MESSAGE, { message: messageText });
-      // remove temp flags and append bot reply
       setMessages((prev) => {
-        const out = prev.map((m) => (m._temp ? { sender: "user", text: m.text } : m));
-        return [...out, { sender: "bot", text: data.reply }];
+        const cleaned = prev.map((m) =>
+          m._temp ? { sender: "user", text: m.text } : m
+        );
+        return [...cleaned, { sender: "bot", text: data.reply }];
       });
     } catch (err) {
-      const status = err && err.response && err.response.status;
+      const status = err?.response?.status;
       if (status === 401) {
         setError("Authentication required. Please login again.");
         clearAuth();
         window.location.href = "/login";
       } else {
         setError("Failed to send message.");
-        setMessages((prev) => prev.concat([{ sender: "bot", text: "Failed to send. Try again." }]));
+        setMessages((prev) =>
+          prev.concat([{ sender: "bot", text: "Failed to send. Try again." }])
+        );
       }
     } finally {
       setSending(false);
@@ -119,9 +144,26 @@ export default function ChatBot({
     }
   }
 
+  // ✅ Logout clears per-user chat cache
+  function handleLogout() {
+    clearAuth();
+    localStorage.removeItem(userKey);
+    setMessages([]);
+    setError("Logged out");
+    window.location.href = "/login";
+  }
+
   return (
-    <div style={{ position: "fixed", right: floatRight ? 24 : "auto", left: floatRight ? "auto" : 24, bottom: 24, zIndex: 60 }}>
-      {/* Chat toggle button with subtle animation */}
+    <div
+      style={{
+        position: "fixed",
+        right: floatRight ? 24 : "auto",
+        left: floatRight ? "auto" : 24,
+        bottom: 24,
+        zIndex: 60,
+      }}
+    >
+      {/* Toggle Button */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <button
           onClick={() => setOpen((o) => !o)}
@@ -141,9 +183,9 @@ export default function ChatBot({
         </button>
       </div>
 
-      {/* Chat window */}
+      {/* Chat Window */}
       {open && (
-        <div 
+        <div
           style={{ width, height }}
           className="bg-[#050a0f] rounded-2xl overflow-hidden shadow-2xl shadow-black/30 border border-slate-800 animate-slideUp"
         >
@@ -162,11 +204,7 @@ export default function ChatBot({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  clearAuth();
-                  setError("Logged out");
-                  window.location.href = "/login";
-                }}
+                onClick={handleLogout}
                 className="text-xs bg-slate-800/20 hover:bg-slate-800/40 text-slate-900 px-2 py-1 rounded-md transition-colors"
               >
                 Logout
@@ -182,9 +220,9 @@ export default function ChatBot({
             </div>
           </div>
 
-          {/* Messages area */}
-          <div 
-            ref={boxRef} 
+          {/* Messages */}
+          <div
+            ref={boxRef}
             style={{ height: height - 146 }}
             className="overflow-y-auto px-4 py-4 bg-gradient-to-b from-[#071018] to-[#050a0f] space-y-4"
           >
@@ -204,35 +242,31 @@ export default function ChatBot({
                     </svg>
                   </div>
                   <div className="text-slate-300 font-medium mb-1">No messages yet</div>
-                  <div className="text-xs text-slate-500">Send a message to start the conversation</div>
+                  <div className="text-xs text-slate-500">Send a message to start chatting</div>
                 </div>
               </div>
             ) : (
               messages.map((m, i) => (
                 <div key={i} className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
                   {m.sender === "bot" && (
-                    <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex-shrink-0 flex items-center justify-center text-emerald-400 mr-2 mt-1">
+                    <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mr-2 mt-1">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                   )}
-                  
-                  <div 
+                  <div
                     className={`px-3 py-2 rounded-2xl max-w-[75%] text-sm leading-relaxed shadow-sm ${
-                      m.sender === "user" 
+                      m.sender === "user"
                         ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-slate-900 rounded-tr-none"
                         : "bg-[#131c26] border border-slate-800 text-slate-200 rounded-tl-none"
                     }`}
                   >
                     {m.text}
-                    {m._temp && (
-                      <div className="text-xs mt-1 opacity-70 text-right">Sending...</div>
-                    )}
+                    {m._temp && <div className="text-xs mt-1 opacity-70 text-right">Sending...</div>}
                   </div>
-                  
                   {m.sender === "user" && (
-                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex-shrink-0 flex items-center justify-center text-slate-900 ml-2 mt-1">
+                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-slate-900 ml-2 mt-1">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
@@ -241,6 +275,7 @@ export default function ChatBot({
                 </div>
               ))
             )}
+
             {error && (
               <div className="rounded-lg p-3 bg-red-900/10 border border-red-800 text-xs text-red-400">
                 <div className="flex items-center gap-2">
@@ -253,7 +288,7 @@ export default function ChatBot({
             )}
           </div>
 
-          {/* Input area */}
+          {/* Input */}
           <div className="px-3 py-3 border-t border-slate-800 bg-[#0c131d]">
             <div className="relative">
               <textarea
@@ -265,8 +300,8 @@ export default function ChatBot({
                 rows={1}
                 style={{ minHeight: 40, maxHeight: 120 }}
               />
-              <button 
-                onClick={sendMessage} 
+              <button
+                onClick={sendMessage}
                 disabled={sending}
                 className="absolute right-2 bottom-2 w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-r from-emerald-600 to-emerald-500 text-slate-900 shadow-md disabled:opacity-70"
               >
@@ -289,11 +324,16 @@ export default function ChatBot({
         </div>
       )}
 
-      {/* Add animations */}
       <style jsx>{`
         @keyframes slideUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
         .animate-slideUp {
           animation: slideUp 0.3s ease-out forwards;

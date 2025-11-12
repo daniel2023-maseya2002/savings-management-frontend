@@ -183,7 +183,7 @@ export default function UserChatbot() {
                 </svg>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-100">CreditJambo Assistant</div>
+                <div className="text-sm font-medium text-gray-100">SavingDm Assistant</div>
                 <div className="text-[10px] text-emerald-500">Online</div>
               </div>
             </div>

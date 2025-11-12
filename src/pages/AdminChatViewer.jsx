@@ -10,7 +10,7 @@ const ENDPOINT = "/chat/all/";
 export default function AdminChatViewer() {
   const [convs, setConvs] = useState([]);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(30);
+  const [pageSize, setPageSize] = useState(30);
   const [count, setCount] = useState(0);
   const [selectedConv, setSelectedConv] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function AdminChatViewer() {
   useEffect(() => {
     loadConversations(page);
     // eslint-disable-next-line
-  }, [page]);
+  }, [page, pageSize]); // Add pageSize dependency to reload when it changes
 
   // Handle click outside modal
   useEffect(() => {
@@ -91,6 +91,13 @@ export default function AdminChatViewer() {
       setPage(1);
       loadConversations(1);
     }
+  }
+
+  // Handle page size change
+  function handlePageSizeChange(e) {
+    const newSize = parseInt(e.target.value, 10);
+    setPageSize(newSize);
+    setPage(1); // Reset to first page when changing page size
   }
 
   return (
@@ -257,7 +264,7 @@ export default function AdminChatViewer() {
                   <select
                     className="bg-[#131c26] border border-slate-700 rounded px-2 py-1 text-sm text-slate-300"
                     value={pageSize}
-                    onChange={(e) => console.log("Page size change not implemented")}
+                    onChange={handlePageSizeChange}
                   >
                     <option value={10}>10 per page</option>
                     <option value={30}>30 per page</option>
