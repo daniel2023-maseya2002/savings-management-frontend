@@ -90,16 +90,20 @@ export default function TopNav() {
               <NavLink to="/transactions" label="Transactions" />
               <NavLink to="/deposit" label="Deposit" />
               <NavLink to="/withdraw" label="Withdraw" />
+              {/* 🆕 Peer transfers for normal users */}
+              <NavLink to="/peer/transfers" label="Peer Transfers" />
               {/* Chat link for regular users */}
               <NavLink to="/chat" label="Chat" />
             </>
           ) : (
             <>
-              <NavLink to="/admin" label="admin" />
+              <NavLink to="/admin" label="Admin" />
               <NavLink to="/admin/users" label="Users" />
               <NavLink to="/admin/devices" label="Devices" />
               <NavLink to="/admin/analytics" label="Analytics" />
               <NavLink to="/admin/logins" label="Logins" />
+              {/* 🆕 Peer transfers admin view */}
+              <NavLink to="/admin/peer/transfers" label="Peer Transfers" />
               {/* Admin Chat link */}
               <NavLink to="/admin/chat" label="Admin Chat" />
             </>
@@ -161,7 +165,9 @@ export default function TopNav() {
                               })}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-400 mt-1">{n.body}</p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            {n.body}
+                          </p>
                           {!n.read && (
                             <button
                               onClick={() => markAsRead(n.id)}
@@ -230,15 +236,23 @@ export default function TopNav() {
                       <NavLink to="/transactions" label="Transactions" />
                       <NavLink to="/deposit" label="Deposit" />
                       <NavLink to="/withdraw" label="Withdraw" />
+                      {/* 🆕 Peer transfers (mobile) */}
+                      <NavLink to="/peer/transfers" label="Peer Transfers" />
                       {/* Chat link for regular users (mobile) */}
                       <NavLink to="/chat" label="Chat" />
                     </>
                   ) : (
                     <>
-                      <NavLink to="/admin" label="admin" />
+                      <NavLink to="/admin" label="Admin" />
                       <NavLink to="/admin/users" label="Users" />
                       <NavLink to="/admin/devices" label="Devices" />
                       <NavLink to="/admin/analytics" label="Analytics" />
+                      <NavLink to="/admin/logins" label="Logins" />
+                      {/* 🆕 Admin peer transfers (mobile) */}
+                      <NavLink
+                        to="/admin/peer/transfers"
+                        label="Peer Transfers"
+                      />
                       {/* Admin Chat link (mobile) */}
                       <NavLink to="/admin/chat" label="Admin Chat" />
                     </>

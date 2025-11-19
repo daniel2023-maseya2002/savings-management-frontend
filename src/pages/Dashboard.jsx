@@ -1,3 +1,4 @@
+// src/pages/UserDashboard.jsx
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -14,62 +15,85 @@ import { toast } from "react-toastify";
 import axios from "../api/axios";
 import { AuthContext } from "../context/AuthContext";
 
+const LOW_BALANCE_THRESHOLD = 100.0;
+
+// Helper for money formatting (works with string/Decimal)
+const fmtMoney = (v) =>
+  Number(v || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
 export default function UserDashboard() {
   const { user, refreshUser } = useContext(AuthContext);
   const [transactions, setTransactions] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showAllTx, setShowAllTx] = useState(false);
   const [showAllNotif, setShowAllNotif] = useState(false);
-  const LOW_BALANCE_THRESHOLD = 100.0;
 
-  // Fetch transactions
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await axios.get("/savings/transactions/");
-        const results = res.data.results || res.data;
-        setTransactions(results);
-      } catch (err) {
-        console.error(err);
+  // -------------------------
+  // Load transactions
+  // -------------------------
+  const loadTransactions = async () => {
+    try {
+      const res = await axios.get("/savings/transactions/");
+      const results = res.data.results || res.data;
+      setTransactions(results || []);
+    } catch (err) {
+      console.error("Failed to load transactions:", err);
+    }
+  };
+
+  // -------------------------
+  // Load notifications
+  // -------------------------
+  const loadNotifications = async () => {
+    try {
+      const res = await axios.get("/notifications/");
+      const list = res.data.results ?? res.data ?? [];
+      setNotifications(list);
+
+      // Low-balance notification from backend (meta.type === "low_balance")
+      const low = list.find(
+        (n) =>
+          n.title?.toLowerCase().includes("low balance") ||
+          n.meta?.type === "low_balance"
+      );
+      if (low) {
+        // Backend uses "message", not "body"
+        toast.warn(low.message || low.title || "Low balance alert", {
+          autoClose: 10000,
+        });
       }
-    };
-    load();
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    loadTransactions();
+    loadNotifications();
   }, []);
 
-  // Low balance warning
+  // Low balance warning based on current user object
   useEffect(() => {
-    if (user && Number(user.balance) < LOW_BALANCE_THRESHOLD) {
-      toast.warn(`Low balance: ${user.balance}. Consider depositing.`);
+    if (user && Number(user.balance || 0) < LOW_BALANCE_THRESHOLD) {
+      toast.warn(`Low balance: ${fmtMoney(user.balance)}. Consider depositing.`);
     }
   }, [user]);
 
-  // Fetch notifications
-  useEffect(() => {
-    let mounted = true;
-    const checkAlerts = async () => {
-      try {
-        const res = await axios.get("/notifications/");
-        const list = res.data.results ?? res.data;
-        if (mounted) setNotifications(list);
-        const low = list.find(
-          (n) =>
-            n.title?.toLowerCase().includes("low balance") ||
-            (n.data && n.data.type === "low_balance")
-        );
-        if (low) toast.warn(low.body, { autoClose: 10000 });
-      } catch {
-        /* ignore */
-      }
-    };
-    checkAlerts();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
+  // Manual refresh: refresh user + reload tx + notifications
   const handleManualRefresh = async () => {
-    await refreshUser();
-    toast.success("Balance refreshed");
+    try {
+      await refreshUser();        // pulls latest core.User.balance from backend
+      await loadTransactions();   // update recent tx
+      await loadNotifications();  // update alerts
+      toast.success("Dashboard refreshed");
+    } catch (err) {
+      console.error("Refresh failed:", err);
+      toast.error("Failed to refresh. Please try again.");
+    }
   };
 
   const fadeIn = {
@@ -77,8 +101,12 @@ export default function UserDashboard() {
     show: { opacity: 1, y: 0, transition: { duration: 0.6 } },
   };
 
-  const visibleTransactions = showAllTx ? transactions : transactions.slice(0, 5);
-  const visibleNotifications = showAllNotif ? notifications : notifications.slice(0, 5);
+  const visibleTransactions = showAllTx
+    ? transactions
+    : transactions.slice(0, 5);
+  const visibleNotifications = showAllNotif
+    ? notifications
+    : notifications.slice(0, 5);
 
   return (
     <motion.div
@@ -134,7 +162,7 @@ export default function UserDashboard() {
             <h3 className="text-gray-300 font-medium">Account Balance</h3>
           </div>
           <p className="text-4xl font-semibold text-white tracking-wide">
-            ${user?.balance?.toLocaleString() || "0.00"}
+            ${fmtMoney(user?.balance)}
           </p>
           <p className="text-gray-400 text-sm mt-2">{user?.email}</p>
         </div>
@@ -217,10 +245,12 @@ export default function UserDashboard() {
                         {t.tx_type}
                       </td>
                       <td className="py-3">
-                        ${Number(t.amount).toLocaleString()}
+                        ${fmtMoney(t.amount)}
                       </td>
                       <td className="py-3 text-gray-400">
-                        {new Date(t.created_at).toLocaleString()}
+                        {t.created_at
+                          ? new Date(t.created_at).toLocaleString()
+                          : "—"}
                       </td>
                     </tr>
                   ))}
@@ -251,11 +281,19 @@ export default function UserDashboard() {
           </div>
 
           {notifications.length > 0 ? (
-            <div className="divide-y divide-gray-700/40 overflow-y-auto">
+            <div className="divide-y divide-gray-700/40 overflow-y-auto max-h-80">
               {visibleNotifications.map((n) => (
                 <div key={n.id} className="py-3">
                   <p className="text-gray-100 font-medium">{n.title}</p>
-                  <p className="text-gray-400 text-sm">{n.body}</p>
+                  <p className="text-gray-400 text-sm">
+                    {/* Your Notification model uses "message" */}
+                    {n.message || n.body || ""}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {n.created_at
+                      ? new Date(n.created_at).toLocaleString()
+                      : ""}
+                  </p>
                 </div>
               ))}
             </div>

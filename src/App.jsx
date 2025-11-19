@@ -48,12 +48,19 @@ import WithdrawPage from "./pages/WithdrawPage";
 // New: admin transaction change page (frontend replacement for Django admin change view)
 import TransactionAdminChangePage from "./pages/TransactionAdminChangePage";
 
+// 🆕 Peer transfer pages
+import AdminPeerTransfersPage from "./pages/AdminPeerTransfersPage";
+import PeerTransfersPage from "./pages/PeerTransfersPage";
+
 // Utils
 import { useGlobalLoading } from "./utils/axiosLoading";
 
 function AppContent() {
   const { user } = useContext(AuthContext);
-  const { isLoading } = useGlobalLoading();
+
+  // useGlobalLoading returns { loading, activeRequests, ... }
+  const { loading: isLoading } = useGlobalLoading();
+
   const location = useLocation();
   const navigationType = useNavigationType();
   const navigate = useNavigate();
@@ -66,7 +73,7 @@ function AppContent() {
       const timeout = setTimeout(() => setRouteLoading(false), 400);
       return () => clearTimeout(timeout);
     }
-  }, [location.pathname]);
+  }, [location.pathname, navigationType]);
 
   // Redirect admin to dashboard
   useEffect(() => {
@@ -157,6 +164,18 @@ function AppContent() {
           }
         />
 
+        {/* 🆕 Peer transfers page for normal users */}
+        <Route
+          path="/peer/transfers"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <PeerTransfersPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* === Chat routes for regular users === */}
         <Route
           path="/chat"
@@ -230,6 +249,7 @@ function AppContent() {
             </AdminRoute>
           }
         />
+
         {/* ✅ Admin Notifications */}
         <Route
           path="/admin/notifications"
@@ -237,6 +257,18 @@ function AppContent() {
             <AdminRoute>
               <AppLayout>
                 <AdminNotification />
+              </AppLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* ✅ Admin: peer transfers list */}
+        <Route
+          path="/admin/peer/transfers"
+          element={
+            <AdminRoute>
+              <AppLayout>
+                <AdminPeerTransfersPage />
               </AppLayout>
             </AdminRoute>
           }
@@ -254,10 +286,7 @@ function AppContent() {
           }
         />
 
-        {/* NEW: Frontend admin "change" page for transactions
-            Route: /admin/core/transaction/:id/change
-            This is where AdminAnalyticsPage will navigate to when "Open" is clicked.
-        */}
+        {/* NEW: Frontend admin "change" page for transactions */}
         <Route
           path="/admin/core/transaction/:id/change"
           element={
@@ -293,7 +322,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <AppContent />
-        </BrowserRouter>
+        </BrowserRouter>  
       </AuthProvider>
     </ThemeProvider>
   );
