@@ -45,6 +45,9 @@ import TransactionsPage from "./pages/TransactionsPage";
 import UserDevicesPage from "./pages/UserDevicesPage";
 import WithdrawPage from "./pages/WithdrawPage";
 
+// New: admin transaction change page (frontend replacement for Django admin change view)
+import TransactionAdminChangePage from "./pages/TransactionAdminChangePage";
+
 // Utils
 import { useGlobalLoading } from "./utils/axiosLoading";
 
@@ -251,6 +254,21 @@ function AppContent() {
           }
         />
 
+        {/* NEW: Frontend admin "change" page for transactions
+            Route: /admin/core/transaction/:id/change
+            This is where AdminAnalyticsPage will navigate to when "Open" is clicked.
+        */}
+        <Route
+          path="/admin/core/transaction/:id/change"
+          element={
+            <AdminRoute>
+              <AppLayout>
+                <TransactionAdminChangePage />
+              </AppLayout>
+            </AdminRoute>
+          }
+        />
+
         {/* 🚫 404 Fallback */}
         <Route
           path="*"
@@ -264,7 +282,6 @@ function AppContent() {
 
       {/* Floating chat widget visible only for logged-in non-admin users */}
       {user && !user.is_staff && <ChatBot />}
-
     </>
   );
 }
