@@ -56,6 +56,11 @@ import PeerTransfersPage from "./pages/PeerTransfersPage";
 import AIAssistantPage from "./pages/AIAssistantPage"; // regular user AI interface
 import AdminAIAssistantPage from "./pages/AdminAIAssistantPage"; // admin AI management / viewer
 
+// 🆕 Feedback pages
+import AdminFeedbackListPage from "./pages/AdminFeedbackListPage"; // admin manages all feedback
+import FeedbackFormPage from "./pages/FeedbackFormPage"; // user sends feedback
+import MyFeedbackPage from "./pages/MyFeedbackPage"; // user views their feedback
+
 // Utils
 import { useGlobalLoading } from "./utils/axiosLoading";
 
@@ -214,6 +219,28 @@ function AppContent() {
           }
         />
 
+        {/* 🆕 Feedback routes for regular users */}
+        <Route
+          path="/feedback"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <FeedbackFormPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-feedback"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <MyFeedbackPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* 🧭 Admin Routes */}
         <Route
           path="/admin"
@@ -309,6 +336,18 @@ function AppContent() {
             <AdminRoute>
               <AppLayout>
                 <AdminChatViewer />
+              </AppLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* 🆕 Admin Feedback management */}
+        <Route
+          path="/admin/feedback"
+          element={
+            <AdminRoute>
+              <AppLayout>
+                <AdminFeedbackListPage />
               </AppLayout>
             </AdminRoute>
           }

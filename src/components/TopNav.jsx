@@ -1,6 +1,22 @@
-// src/components/TopNav.jsx
+// Local file path: src/components/TopNav.jsx
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, LogOut, Menu } from "lucide-react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  BarChart3,
+  Bell,
+  Bot,
+  CreditCard,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MessageCircle,
+  MessageSquare,
+  Monitor,
+  Send,
+  ShieldCheck,
+  Users
+} from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "../api/axios";
@@ -31,6 +47,7 @@ export default function TopNav() {
       setNotifications(list.slice(0, 6));
       setUnread(list.filter((n) => !n.read).length);
     } catch (err) {
+      // keep quiet on 401 during initial load (handled by axios interceptor)
       console.error("Error loading notifications:", err);
     }
   };
@@ -44,19 +61,23 @@ export default function TopNav() {
     }
   };
 
-  const NavLink = ({ to, label }) => {
+  const NavLink = ({ to, label, icon: Icon }) => {
     const active = location.pathname === to;
     return (
       <Link
         to={to}
-        className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+        className={`group relative px-3 py-2 rounded-lg transition-all duration-200 ${
           active
             ? "text-emerald-400 bg-emerald-900/20"
             : "text-gray-300 hover:text-emerald-400 hover:bg-gray-800/40"
         }`}
         onClick={() => setMenuOpen(false)}
       >
-        {label}
+        <Icon className="w-5 h-5" />
+        {/* Tooltip */}
+        <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap border border-gray-700">
+          {label}
+        </span>
       </Link>
     );
   };
@@ -107,33 +128,30 @@ export default function TopNav() {
         </Link>
 
         {/* 🌐 Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-2">
+        <div className="hidden md:flex items-center space-x-1">
           {!user.is_staff ? (
             <>
-              <NavLink to="/dashboard" label="Dashboard" />
-              <NavLink to="/transactions" label="Transactions" />
-              <NavLink to="/deposit" label="Deposit" />
-              <NavLink to="/withdraw" label="Withdraw" />
-              {/* 🆕 Peer transfers for normal users */}
-              <NavLink to="/peer/transfers" label="Peer Transfers" />
-              {/* AI Assistant for normal users */}
-              <NavLink to="/ai" label="AI Assistant" />
-              {/* Chat link for regular users */}
-              <NavLink to="/chat" label="Chat" />
+              <NavLink to="/dashboard" label="Dashboard" icon={LayoutDashboard} />
+              <NavLink to="/transactions" label="Transactions" icon={CreditCard} />
+              <NavLink to="/deposit" label="Deposit" icon={ArrowDownCircle} />
+              <NavLink to="/withdraw" label="Withdraw" icon={ArrowUpCircle} />
+              <NavLink to="/peer/transfers" label="Peer Transfers" icon={Send} />
+              <NavLink to="/ai" label="AI Assistant" icon={Bot} />
+              <NavLink to="/chat" label="Chat" icon={MessageCircle} />
+              <NavLink to="/feedback" label="Send Feedback" icon={MessageSquare} />
+              <NavLink to="/my-feedback" label="My Feedback" icon={BarChart3} />
             </>
           ) : (
             <>
-              <NavLink to="/admin" label="Admin" />
-              <NavLink to="/admin/users" label="Users" />
-              <NavLink to="/admin/devices" label="Devices" />
-              <NavLink to="/admin/analytics" label="Analytics" />
-              <NavLink to="/admin/logins" label="Logins" />
-              {/* 🆕 Peer transfers admin view */}
-              <NavLink to="/admin/peer/transfers" label="Peer Transfers" />
-              {/* Admin AI assistant / review page */}
-              <NavLink to="/admin/ai" label="AI Assistant" />
-              {/* Admin Chat link */}
-              <NavLink to="/admin/chat" label="Admin Chat" />
+              <NavLink to="/admin" label="Admin Dashboard" icon={ShieldCheck} />
+              <NavLink to="/admin/users" label="Users" icon={Users} />
+              <NavLink to="/admin/devices" label="Devices" icon={Monitor} />
+              <NavLink to="/admin/analytics" label="Analytics" icon={BarChart3} />
+              <NavLink to="/admin/logins" label="Logins" icon={ShieldCheck} />
+              <NavLink to="/admin/peer/transfers" label="Peer Transfers" icon={Send} />
+              <NavLink to="/admin/ai" label="AI Assistant" icon={Bot} />
+              <NavLink to="/admin/chat" label="Admin Chat" icon={MessageCircle} />
+              <NavLink to="/admin/feedback" label="Feedback" icon={MessageSquare} />
             </>
           )}
         </div>
@@ -260,33 +278,27 @@ export default function TopNav() {
                 <div className="flex flex-col p-2">
                   {!user.is_staff ? (
                     <>
-                      <NavLink to="/dashboard" label="Dashboard" />
-                      <NavLink to="/transactions" label="Transactions" />
-                      <NavLink to="/deposit" label="Deposit" />
-                      <NavLink to="/withdraw" label="Withdraw" />
-                      {/* 🆕 Peer transfers (mobile) */}
-                      <NavLink to="/peer/transfers" label="Peer Transfers" />
-                      {/* AI Assistant (mobile) */}
-                      <NavLink to="/ai" label="AI Assistant" />
-                      {/* Chat link for regular users (mobile) */}
-                      <NavLink to="/chat" label="Chat" />
+                      <MobileNavLink to="/dashboard" label="Dashboard" icon={LayoutDashboard} />
+                      <MobileNavLink to="/transactions" label="Transactions" icon={CreditCard} />
+                      <MobileNavLink to="/deposit" label="Deposit" icon={ArrowDownCircle} />
+                      <MobileNavLink to="/withdraw" label="Withdraw" icon={ArrowUpCircle} />
+                      <MobileNavLink to="/peer/transfers" label="Peer Transfers" icon={Send} />
+                      <MobileNavLink to="/ai" label="AI Assistant" icon={Bot} />
+                      <MobileNavLink to="/chat" label="Chat" icon={MessageCircle} />
+                      <MobileNavLink to="/feedback" label="Send Feedback" icon={MessageSquare} />
+                      <MobileNavLink to="/my-feedback" label="My Feedback" icon={BarChart3} />
                     </>
                   ) : (
                     <>
-                      <NavLink to="/admin" label="Admin" />
-                      <NavLink to="/admin/users" label="Users" />
-                      <NavLink to="/admin/devices" label="Devices" />
-                      <NavLink to="/admin/analytics" label="Analytics" />
-                      <NavLink to="/admin/logins" label="Logins" />
-                      {/* 🆕 Admin peer transfers (mobile) */}
-                      <NavLink
-                        to="/admin/peer/transfers"
-                        label="Peer Transfers"
-                      />
-                      {/* Admin AI assistant (mobile) */}
-                      <NavLink to="/admin/ai" label="AI Assistant" />
-                      {/* Admin Chat link (mobile) */}
-                      <NavLink to="/admin/chat" label="Admin Chat" />
+                      <MobileNavLink to="/admin" label="Admin Dashboard" icon={ShieldCheck} />
+                      <MobileNavLink to="/admin/users" label="Users" icon={Users} />
+                      <MobileNavLink to="/admin/devices" label="Devices" icon={Monitor} />
+                      <MobileNavLink to="/admin/analytics" label="Analytics" icon={BarChart3} />
+                      <MobileNavLink to="/admin/logins" label="Logins" icon={ShieldCheck} />
+                      <MobileNavLink to="/admin/peer/transfers" label="Peer Transfers" icon={Send} />
+                      <MobileNavLink to="/admin/ai" label="AI Assistant" icon={Bot} />
+                      <MobileNavLink to="/admin/chat" label="Admin Chat" icon={MessageCircle} />
+                      <MobileNavLink to="/admin/feedback" label="Feedback" icon={MessageSquare} />
                     </>
                   )}
                   <button
@@ -303,5 +315,25 @@ export default function TopNav() {
         </div>
       </div>
     </nav>
+  );
+}
+
+// Mobile navigation link component (shows text + icon)
+function MobileNavLink({ to, label, icon: Icon }) {
+  const location = useLocation();
+  const active = location.pathname === to;
+  
+  return (
+    <Link
+      to={to}
+      className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+        active
+          ? "text-emerald-400 bg-emerald-900/20"
+          : "text-gray-300 hover:text-emerald-400 hover:bg-gray-800/40"
+      }`}
+    >
+      <Icon className="w-4 h-4" />
+      <span>{label}</span>
+    </Link>
   );
 }
