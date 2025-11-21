@@ -19,16 +19,15 @@ import axios from "../api/axios";
 import useAIStream from "../hooks/useAIStream";
 
 /**
- * AI Chat Widget - Enhanced Version
+ * AI Assistant Page - Fixed Message Persistence
  *
  * Features:
- * - Modern dark theme with improved visual hierarchy
- * - Message persistence and proper loading
- * - Streaming responses with stop functionality
- * - Better conversation management
- * - Enhanced UX with animations and feedback
+ * - Messages persist after AI response
+ * - Stop button keeps messages
+ * - Proper message state management
+ * - Beautiful empty state with suggestion cards
  */
-export default function AIChatWidget({ accessToken: accessTokenProp, initialConversationId = null }) {
+export default function AIAssistantPage({ accessToken: accessTokenProp, initialConversationId = null }) {
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(initialConversationId);
   const [messages, setMessages] = useState([]);
@@ -80,7 +79,7 @@ export default function AIChatWidget({ accessToken: accessTokenProp, initialConv
     return () => (mounted = false);
   }, []);
 
-  // Load messages for active conversation - IMPROVED
+  // Load messages for active conversation
   useEffect(() => {
     let cancel = false;
     if (!activeConversation) {
@@ -233,18 +232,20 @@ export default function AIChatWidget({ accessToken: accessTokenProp, initialConv
             created_at: new Date().toISOString(),
             model: usedModel,
           };
-          setMessages((m) => [...m.filter((x) => x.role !== "assistant_stream"), assistantMsg]);
+          
+          // FIXED: Just add the assistant message, don't filter
+          setMessages((m) => [...m, assistantMsg]);
           setPartialReply("");
           setStreaming(false);
 
-          // Reload messages from server after response
+          // Reload from server after a delay
           setTimeout(() => {
             reloadMessages(convId);
             axios.get("/ai/conversations/").then((res) => {
               const data = res.data.results ?? res.data;
               setConversations(Array.isArray(data) ? data : []);
             }).catch(() => {});
-          }, 500);
+          }, 1000);
         },
         onError: (err) => {
           console.error("Stream error", err);
@@ -272,6 +273,24 @@ export default function AIChatWidget({ accessToken: accessTokenProp, initialConv
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleStop = () => {
+    // When stopping, keep the partial reply as a complete message
+    if (partialReply) {
+      const assistantMsg = {
+        id: `local-${Date.now()}-a`,
+        role: "assistant",
+        content: partialReply,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((m) => [...m, assistantMsg]);
+    }
+    
+    abort();
+    setStreaming(false);
+    setPartialReply("");
+    toast.info("Stream stopped - message kept");
   };
 
   const refreshConversations = async () => {
@@ -480,19 +499,45 @@ export default function AIChatWidget({ accessToken: accessTokenProp, initialConv
 
                 <div className="flex items-center gap-3">
                   {streaming && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30">
-                      <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-                      <span className="text-xs text-cyan-300 font-medium">AI is thinking...</span>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-emerald-500/20 border border-cyan-500/40 shadow-lg shadow-cyan-500/20">
+                      <div className="relative">
+                        <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                        <div className="absolute inset-0 w-4 h-4 text-cyan-400 animate-ping opacity-20">
+                          <Loader2 className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <span className="text-xs text-cyan-300 font-semibold">AI is thinking...</span>
+                    </div>
+                  )}
+                  {loadingMessages && (
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/30">
+                      <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                      <span className="text-xs text-purple-300 font-medium">Loading messages...</span>
                     </div>
                   )}
                   <button
                     onClick={() => {
-                      setMessages([]);
-                      setPartialReply("");
-                      toast.info("Chat cleared (local only)");
+                      if (activeConversation) {
+                        reloadMessages(activeConversation);
+                        toast.info("Reloading messages...");
+                      }
+                    }}
+                    disabled={loadingMessages}
+                    className="p-2 rounded-lg hover:bg-slate-800/50 transition-colors disabled:opacity-50"
+                    title="Reload messages"
+                  >
+                    <RefreshCcw className={`w-5 h-5 text-slate-400 ${loadingMessages ? "animate-spin" : ""}`} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Clear all messages from view? (This won't delete the conversation)")) {
+                        setMessages([]);
+                        setPartialReply("");
+                        toast.info("Chat view cleared");
+                      }
                     }}
                     className="p-2 rounded-lg hover:bg-slate-800/50 transition-colors"
-                    title="Clear local chat view"
+                    title="Clear chat view"
                   >
                     <X className="w-5 h-5 text-slate-400" />
                   </button>
@@ -688,12 +733,7 @@ export default function AIChatWidget({ accessToken: accessTokenProp, initialConv
                   </button>
                   {streaming && (
                     <button
-                      onClick={() => {
-                        abort();
-                        setStreaming(false);
-                        setPartialReply("");
-                        toast.info("Stream stopped");
-                      }}
+                      onClick={handleStop}
                       className="px-4 py-3 rounded-xl bg-rose-600/20 border border-rose-500/30 hover:bg-rose-600/30 text-rose-300 font-medium transition-all"
                     >
                       Stop
