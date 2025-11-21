@@ -1,3 +1,4 @@
+// src/api/axios.js
 import axios from "axios";
 import { toast } from "react-toastify";
 import { setupAxiosInterceptors } from "../utils/axiosLoading";
@@ -31,12 +32,81 @@ export const tokenService = {
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user_info");
   },
+  
+  // NEW: Decode JWT to check expiry
+  isTokenExpiringSoon: (token, bufferMinutes = 2) => {
+    if (!token) return true;
+    
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      const { exp } = JSON.parse(jsonPayload);
+      
+      if (!exp) return true;
+      
+      const now = Math.floor(Date.now() / 1000);
+      const bufferSeconds = bufferMinutes * 60;
+      
+      // Return true if token expires within buffer time
+      return exp - now < bufferSeconds;
+    } catch (error) {
+      console.error("Failed to decode token:", error);
+      return true;
+    }
+  },
+  
+  // NEW: Get token expiry info
+  getTokenExpiry: (token) => {
+    if (!token) return null;
+    
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      const { exp } = JSON.parse(jsonPayload);
+      
+      if (!exp) return null;
+      
+      return {
+        expiresAt: new Date(exp * 1000),
+        secondsRemaining: exp - Math.floor(Date.now() / 1000),
+      };
+    } catch (error) {
+      return null;
+    }
+  },
 };
 
 // ✅ Attach access token to every request
 axiosInstance.interceptors.request.use(
-  (config) => {
-    const access = tokenService.getAccess();
+  async (config) => {
+    let access = tokenService.getAccess();
+    
+    // NEW: Proactively refresh if token is expiring soon
+    if (access && tokenService.isTokenExpiringSoon(access)) {
+      console.log("🔄 Token expiring soon, refreshing proactively...");
+      
+      try {
+        const newAccess = await refreshTokenSilently();
+        if (newAccess) {
+          access = newAccess;
+        }
+      } catch (error) {
+        console.warn("Proactive refresh failed, will retry on 401:", error);
+      }
+    }
+    
     if (access) config.headers.Authorization = `Bearer ${access}`;
     return config;
   },
@@ -56,7 +126,42 @@ function addSubscriber(cb) {
   subscribers.push(cb);
 }
 
-// ✅ Response Interceptor
+// NEW: Silent refresh function (for proactive refresh)
+async function refreshTokenSilently() {
+  const refresh = tokenService.getRefresh();
+  if (!refresh) return null;
+
+  if (isRefreshing) {
+    // Wait for ongoing refresh
+    return new Promise((resolve) => {
+      addSubscriber((newToken) => resolve(newToken));
+    });
+  }
+
+  isRefreshing = true;
+  
+  try {
+    const res = await axios.post(`${API_BASE}/auth/token/refresh/`, { refresh });
+    const newAccess = res.data.access;
+
+    if (!newAccess) throw new Error("No access token returned");
+
+    tokenService.setTokens({ access: newAccess });
+    axiosInstance.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
+
+    onRefreshed(newAccess);
+    console.log("✅ Token refreshed proactively");
+    
+    return newAccess;
+  } catch (error) {
+    console.error("Silent refresh failed:", error);
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
+}
+
+// ✅ Response Interceptor (existing logic preserved)
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -121,5 +226,30 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// NEW: Export utility to manually check/refresh token
+export const checkAndRefreshToken = async () => {
+  const access = tokenService.getAccess();
+  
+  if (!access) {
+    console.log("No access token");
+    return false;
+  }
+  
+  const expiry = tokenService.getTokenExpiry(access);
+  if (expiry) {
+    console.log(`Token expires at: ${expiry.expiresAt.toLocaleString()}`);
+    console.log(`Time remaining: ${Math.floor(expiry.secondsRemaining / 60)} minutes`);
+  }
+  
+  if (tokenService.isTokenExpiringSoon(access)) {
+    console.log("Token expiring soon, refreshing...");
+    const newToken = await refreshTokenSilently();
+    return !!newToken;
+  }
+  
+  console.log("Token is still valid");
+  return true;
+};
 
 export default axiosInstance;

@@ -1,30 +1,35 @@
 // src/pages/AdminAIAssistantPage.jsx
 import { motion } from "framer-motion";
 import {
+    Activity,
+    AlertTriangle,
+    BarChart3,
     Bot,
     Clock,
+    DollarSign,
     Loader2,
     MessageSquare,
     RefreshCcw,
     Search,
     Send,
     Sparkles,
+    TrendingUp,
     User,
+    Users,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import axios from "../api/axios";
 
 /**
- * Admin AI Assistant page.
- * This version uses fetch POST + ReadableStream to consume SSE frames from
- * /api/ai/assistant/stream/ which guarantees POST support.
+ * Admin AI Assistant Page - Analytics & Monitoring Focus
  * 
- * Admin users can:
- * - View all conversations from all users
- * - Create new conversations
- * - Send messages to any conversation
- * - Monitor AI responses in real-time
+ * Features:
+ * - Quick analytics prompts for instant insights
+ * - System-wide performance monitoring
+ * - User analytics and transaction patterns
+ * - Real-time streaming responses
+ * - Conversation history management
  */
 
 export default function AdminAIAssistantPage() {
@@ -35,8 +40,49 @@ export default function AdminAIAssistantPage() {
   const [streaming, setStreaming] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showQuickPrompts, setShowQuickPrompts] = useState(true);
   const messagesEndRef = useRef(null);
   const currentStreamRef = useRef(null);
+
+  // Admin-focused quick analysis prompts
+  const quickPrompts = [
+    {
+      icon: BarChart3,
+      label: "Transaction Overview",
+      prompt: "Provide a comprehensive overview of transaction volumes, success rates, and trends for the past 7 days. Highlight any concerning patterns.",
+      color: "cyan"
+    },
+    {
+      icon: Users,
+      label: "User Performance",
+      prompt: "Analyze user activity and engagement metrics. Who are the top 10 users by transaction volume this month? Are there any inactive users we should be concerned about?",
+      color: "emerald"
+    },
+    {
+      icon: TrendingUp,
+      label: "Growth Analysis",
+      prompt: "Compare this week's metrics to last week. What are the growth trends in user registrations, transaction volume, and system activity?",
+      color: "purple"
+    },
+    {
+      icon: AlertTriangle,
+      label: "Risk Assessment",
+      prompt: "Identify any anomalies, suspicious patterns, or high-risk transactions. What issues require immediate attention?",
+      color: "rose"
+    },
+    {
+      icon: DollarSign,
+      label: "Financial Report",
+      prompt: "Generate a financial summary including total volume, average transaction size, and revenue distribution across transaction types.",
+      color: "amber"
+    },
+    {
+      icon: Activity,
+      label: "System Health",
+      prompt: "Evaluate system health: success rates, error rates, pending transactions, and processing efficiency. Are there any bottlenecks?",
+      color: "blue"
+    },
+  ];
 
   useEffect(() => {
     loadConversations();
@@ -50,9 +96,6 @@ export default function AdminAIAssistantPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /**
-   * Load all conversations (admin sees all users' conversations)
-   */
   const loadConversations = async () => {
     try {
       setLoading(true);
@@ -69,15 +112,11 @@ export default function AdminAIAssistantPage() {
     }
   };
 
-  /**
-   * Load messages for a specific conversation
-   */
   const loadMessages = async (id) => {
     try {
       setSelected(id);
       const res = await axios.get(`/ai/conversations/${id}/`);
       
-      // Handle different response structures from paginated API
       let msgs = [];
       if (res.data.messages) {
         msgs = res.data.messages.results ?? res.data.messages;
@@ -87,7 +126,16 @@ export default function AdminAIAssistantPage() {
         msgs = Array.isArray(res.data) ? res.data : [];
       }
       
-      setMessages(Array.isArray(msgs) ? msgs : []);
+      // Sort by created_at to ensure correct order
+      const sortedMsgs = Array.isArray(msgs) 
+        ? msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        : [];
+      
+      setMessages(sortedMsgs);
+      setShowQuickPrompts(false);
+      
+      console.log(`[admin] Loaded ${sortedMsgs.length} messages for conversation ${id}`);
+      
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } catch (err) {
       console.error("Failed to load messages:", err);
@@ -96,20 +144,22 @@ export default function AdminAIAssistantPage() {
     }
   };
 
-  /**
-   * Create a new conversation as admin
-   */
-  const createConversation = async (initialTitle = null, mode = "general") => {
+  const createConversation = async (initialTitle = null, mode = "analytics") => {
     try {
+      // Ensure we always have a title
+      const title = initialTitle || `Admin Analytics ${new Date().toLocaleString()}`;
+      
       const payload = { 
-        title: initialTitle || `Admin conversation ${new Date().toLocaleString()}`, 
-        mode 
+        title: title,
+        mode: mode || "analytics"
       };
       
+      console.debug("[admin] Creating conversation:", payload);
+      
       const res = await axios.post("/ai/conversations/", payload);
+      let newConv = res.data;
       
       // Handle different response structures
-      let newConv = res.data;
       if (res.data.results && !Array.isArray(res.data.results)) {
         newConv = res.data.results;
       }
@@ -118,9 +168,7 @@ export default function AdminAIAssistantPage() {
         setConversations((c) => [newConv, ...c.filter((x) => x.id !== newConv.id)]);
         setSelected(newConv.id);
         setMessages([]);
-        toast.success("New conversation created");
-        
-        // Refresh list in background
+        toast.success("New analytics session created");
         setTimeout(loadConversations, 300);
         return newConv;
       } else {
@@ -130,18 +178,45 @@ export default function AdminAIAssistantPage() {
       }
     } catch (err) {
       console.error("Create conversation failed", err);
-      toast.error("Could not create conversation");
+      
+      // Log detailed error for debugging
+      if (err.response) {
+        console.error("Error response:", err.response.data);
+        const errorMsg = err.response.data?.detail || 
+                        err.response.data?.title?.[0] || 
+                        err.response.data?.mode?.[0] ||
+                        "Could not create conversation";
+        toast.error(errorMsg);
+      } else {
+        toast.error("Could not create conversation");
+      }
+      
       throw err;
     }
   };
 
-  /**
-   * Stop any active streaming
-   */
   const stopCurrentStream = () => {
     try {
       if (currentStreamRef.current && typeof currentStreamRef.current.abort === "function") {
+        // Before aborting, save the current partial message
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === "assistant_stream") {
+            // Convert streaming message to final message
+            return [
+              ...prev.slice(0, -1),
+              {
+                ...last,
+                role: "assistant",
+                id: `stopped-${Date.now()}`,
+              }
+            ];
+          }
+          return prev;
+        });
+        
         currentStreamRef.current.abort();
+        toast.info("Stream stopped - partial response saved");
       }
     } catch (err) {
       console.warn("Error aborting stream", err);
@@ -151,10 +226,6 @@ export default function AdminAIAssistantPage() {
     }
   };
 
-  /**
-   * Parse a single SSE frame string
-   * Format: data: {"type":"chunk","text":"..."}\n\n
-   */
   const parseSSEFrame = (frame) => {
     const lines = frame.split("\n");
     const dataLines = lines
@@ -171,67 +242,61 @@ export default function AdminAIAssistantPage() {
     }
   };
 
-  /**
-   * Send a message as admin with streaming response
-   */
-  const sendAdminMessage = async () => {
-    if (!input.trim() || streaming) return;
+  const sendAdminMessage = async (customPrompt = null) => {
+    const messageText = customPrompt || input.trim();
+    if (!messageText || streaming) return;
 
-    // Ensure we have a conversation
     let convId = selected;
     if (!convId) {
       try {
         const conv = await createConversation(
-          `Admin started ${new Date().toLocaleString()}`,
-          "general"
+          `Analytics: ${messageText.slice(0, 50)}`,
+          "analytics"
         );
         convId = conv?.id;
+        
+        if (!convId) {
+          console.error("[admin] Created conversation but no ID returned:", conv);
+          toast.error("Failed to create conversation - no ID");
+          return;
+        }
       } catch (e) {
+        console.error("[admin] Failed to create conversation:", e);
         return;
       }
     }
 
-    if (!convId) {
-      toast.error("No conversation id available");
-      return;
-    }
-
-    const userMessage = input.trim();
-    
-    // Add user message to UI immediately
     setMessages((prev) => [
       ...prev,
       { 
         role: "user", 
-        content: userMessage, 
+        content: messageText, 
         created_at: new Date().toISOString() 
       },
     ]);
-    setInput("");
+    
+    if (!customPrompt) setInput("");
+    setShowQuickPrompts(false);
 
     const body = {
-      message: userMessage,
+      message: messageText,
       conversation_id: convId,
-      mode: "general",
+      mode: "analytics",
     };
 
-    // Build streaming URL
     const baseFromAxios = (axios?.defaults?.baseURL || window.location.origin)
       .replace(/\/+$/, "");
     const streamUrl = `${baseFromAxios}/ai/assistant/stream/`;
     console.debug("[admin] streamUrl:", streamUrl);
 
-    // Get auth token (support multiple storage keys)
     const token =
       localStorage.getItem("access_token") ||
       localStorage.getItem("access") ||
       localStorage.getItem("token") ||
       "";
 
-    // Stop any existing stream
     stopCurrentStream();
 
-    // Start streaming with fetch
     try {
       const controller = new AbortController();
       const signal = controller.signal;
@@ -265,7 +330,6 @@ export default function AdminAIAssistantPage() {
         currentStreamRef.current = null;
         setStreaming(false);
 
-        // Try fallback to non-streaming endpoint
         try {
           console.debug("[admin] attempting non-stream fallback");
           const r = await axios.post("/ai/assistant/", body);
@@ -288,7 +352,6 @@ export default function AdminAIAssistantPage() {
         return;
       }
 
-      // Process streaming response
       const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
@@ -301,25 +364,22 @@ export default function AdminAIAssistantPage() {
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
 
-        // Process complete frames (separated by \n\n)
         let idx;
         while ((idx = buffer.indexOf("\n\n")) !== -1) {
           const frame = buffer.slice(0, idx).trim();
           buffer = buffer.slice(idx + 2);
           
-          if (!frame || frame.startsWith(":")) continue; // Skip empty or comment lines
+          if (!frame || frame.startsWith(":")) continue;
 
           const parsed = parseSSEFrame(frame);
           if (!parsed) continue;
           
           receivedFrames = true;
 
-          // Handle different event types
           if (parsed.type === "chunk") {
             setMessages((prev) => {
               const last = prev[prev.length - 1];
               if (last && last.role === "assistant_stream") {
-                // Append to existing streaming message
                 const newPrev = [...prev];
                 newPrev[newPrev.length - 1] = {
                   ...last,
@@ -327,7 +387,6 @@ export default function AdminAIAssistantPage() {
                 };
                 return newPrev;
               }
-              // Create new streaming message
               return [
                 ...prev,
                 {
@@ -341,7 +400,6 @@ export default function AdminAIAssistantPage() {
             const finalText = parsed.text ?? "";
             setStreaming(false);
             
-            // Replace streaming message with final assistant message
             setMessages((prev) => {
               const filtered = prev.filter((m) => m.role !== "assistant_stream");
               return [
@@ -355,14 +413,18 @@ export default function AdminAIAssistantPage() {
               ];
             });
             
-            // Stop streaming
             try {
               controller.abort();
             } catch {}
             currentStreamRef.current = null;
             
-            // Refresh conversation list
-            setTimeout(loadConversations, 300);
+            // Reload conversation and messages to get server-saved versions
+            setTimeout(() => {
+              loadConversations();
+              if (convId) {
+                loadMessages(convId);
+              }
+            }, 500);
             return;
           } else if (parsed.type === "meta") {
             console.debug("[admin] meta event:", parsed);
@@ -378,7 +440,6 @@ export default function AdminAIAssistantPage() {
             currentStreamRef.current = null;
             return;
           } else {
-            // Unknown type - treat as text chunk
             console.debug("[admin] unknown event type:", parsed.type);
             setMessages((prev) => [
               ...prev,
@@ -392,7 +453,6 @@ export default function AdminAIAssistantPage() {
         }
       }
 
-      // Stream ended naturally - check if we got any frames
       if (!receivedFrames) {
         console.warn("[admin] no SSE frames received, trying fallback");
         currentStreamRef.current = null;
@@ -417,14 +477,12 @@ export default function AdminAIAssistantPage() {
           toast.error("Failed to get AI response");
         }
       } else {
-        // Stream ended, finalize any partial message
         setStreaming(false);
         currentStreamRef.current = null;
         
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.role === "assistant_stream") {
-            // Convert streaming message to final message
             return [
               ...prev.slice(0, -1),
               { ...last, role: "assistant" },
@@ -435,10 +493,32 @@ export default function AdminAIAssistantPage() {
       }
     } catch (err) {
       console.error("[admin] fetch streaming failed:", err);
+      
+      // Save any partial content before cleanup
+      if (err.name === "AbortError") {
+        // User stopped it, partial content already saved in stopCurrentStream
+        console.log("[admin] Stream aborted by user");
+      } else {
+        // Unexpected error - save what we have
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === "assistant_stream" && last.content) {
+            return [
+              ...prev.slice(0, -1),
+              {
+                ...last,
+                role: "assistant",
+                id: `error-${Date.now()}`,
+              }
+            ];
+          }
+          return prev;
+        });
+      }
+      
       currentStreamRef.current = null;
       setStreaming(false);
 
-      // Try fallback
       if (err.name !== "AbortError") {
         try {
           const r = await axios.post("/ai/assistant/", body);
@@ -462,9 +542,6 @@ export default function AdminAIAssistantPage() {
     }
   };
 
-  /**
-   * Handle keyboard shortcuts
-   */
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -472,9 +549,6 @@ export default function AdminAIAssistantPage() {
     }
   };
 
-  /**
-   * Filter conversations by search query
-   */
   const filteredConversations = conversations.filter((c) =>
     (c.title || "Untitled").toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -488,8 +562,8 @@ export default function AdminAIAssistantPage() {
     <div className="min-h-screen w-screen bg-[#0a0e1a] text-white pt-24 relative overflow-hidden">
       {/* Animated Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-[#0f1629] to-slate-950 -z-10"></div>
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(6,182,212,0.08),transparent_50%)] -z-10"></div>
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(16,185,129,0.06),transparent_50%)] -z-10"></div>
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(139,92,246,0.08),transparent_50%)] -z-10"></div>
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(236,72,153,0.06),transparent_50%)] -z-10"></div>
 
       <div className="px-8 py-8 h-[calc(100vh-96px)] flex flex-col gap-6">
         {/* Header */}
@@ -501,25 +575,28 @@ export default function AdminAIAssistantPage() {
         >
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30 shadow-lg shadow-purple-500/10">
-              <Bot className="w-8 h-8 text-purple-300" />
+              <BarChart3 className="w-8 h-8 text-purple-300" />
             </div>
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-300 bg-clip-text text-transparent">
-                AI Assistant Admin
+                Admin Analytics AI
               </h1>
               <p className="text-slate-400 text-sm mt-1">
-                Manage and monitor all AI conversations
+                System insights, user analytics, and transaction monitoring
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => createConversation()}
+              onClick={() => {
+                createConversation();
+                setShowQuickPrompts(true);
+              }}
               disabled={loading}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-300 text-sm font-medium hover:from-emerald-500/30 hover:to-cyan-500/30 transition-all disabled:opacity-50"
             >
-              New Conversation
+              New Session
             </button>
 
             <button
@@ -549,9 +626,9 @@ export default function AdminAIAssistantPage() {
                   <MessageSquare className="w-5 h-5 text-purple-400" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-100">Conversations</h2>
+                  <h2 className="text-lg font-semibold text-slate-100">Analytics Sessions</h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {conversations.length} total chats
+                    {conversations.length} total sessions
                   </p>
                 </div>
               </div>
@@ -560,7 +637,7 @@ export default function AdminAIAssistantPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="Search conversations..."
+                  placeholder="Search sessions..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-all"
@@ -582,7 +659,7 @@ export default function AdminAIAssistantPage() {
                 <div className="text-center py-20">
                   <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-3" />
                   <p className="text-slate-500 text-sm">
-                    {searchQuery ? "No conversations found" : "No conversations yet"}
+                    {searchQuery ? "No sessions found" : "No sessions yet"}
                   </p>
                 </div>
               ) : (
@@ -617,7 +694,7 @@ export default function AdminAIAssistantPage() {
                               selected === c.id ? "text-purple-200" : "text-slate-200"
                             }`}
                           >
-                            {c.title || "Untitled Conversation"}
+                            {c.title || "Analytics Session"}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <span 
@@ -627,7 +704,7 @@ export default function AdminAIAssistantPage() {
                                   : "bg-slate-700/50 text-slate-400"
                               }`}
                             >
-                              {c.mode || "general"}
+                              {c.mode || "analytics"}
                             </span>
                             {c.created_at && (
                               <span className="text-xs text-slate-500 flex items-center gap-1">
@@ -653,59 +730,115 @@ export default function AdminAIAssistantPage() {
             animate="show"
             transition={{ delay: 0.2 }}
           >
-            {!selected ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                <div className="p-6 rounded-full bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 mb-6">
-                  <Sparkles className="w-16 h-16 text-purple-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-200 mb-2">
-                  Select a Conversation
-                </h3>
-                <p className="text-slate-500 max-w-md">
-                  Choose a conversation from the list to view messages and interact with the
-                  AI assistant.
-                </p>
-
-                <div className="mt-6">
-                  <button
-                    onClick={() => createConversation()}
-                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-slate-950 font-semibold shadow-lg transition-all"
-                  >
-                    Create new conversation
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Chat Header */}
-                <div className="px-8 py-5 border-b border-slate-800/50 bg-slate-900/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
-                        <MessageSquare className="w-5 h-5 text-purple-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-100">
-                          {conversations.find((c) => c.id === selected)?.title || "Untitled"}
-                        </h3>
-                        <p className="text-xs text-slate-500">
-                          {messages.length} messages
-                        </p>
-                      </div>
-                    </div>
-                    {streaming && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30">
-                        <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
-                        <span className="text-xs text-purple-300 font-medium">
-                          AI is typing...
-                        </span>
-                      </div>
-                    )}
+            {/* Chat Header */}
+            <div className="px-8 py-5 border-b border-slate-800/50 bg-slate-900/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
+                    <MessageSquare className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-100">
+                      {conversations.find((c) => c.id === selected)?.title || "Analytics Console"}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {messages.length} insights generated
+                    </p>
                   </div>
                 </div>
+                {streaming && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30">
+                      <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                      <span className="text-xs text-purple-300 font-medium">
+                        Analyzing...
+                      </span>
+                    </div>
+                    <button
+                      onClick={stopCurrentStream}
+                      className="px-4 py-2 rounded-xl bg-rose-600/20 border border-rose-500/30 hover:bg-rose-600/30 text-rose-300 text-xs font-medium transition-all"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
 
-                {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+              {showQuickPrompts && messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <div className="p-6 rounded-full bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 mb-6">
+                    <Sparkles className="w-16 h-16 text-purple-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-200 mb-2">
+                    Quick Analytics
+                  </h3>
+                  <p className="text-slate-500 max-w-md mb-8 text-center">
+                    Click a prompt below for instant system insights, or type your own query
+                  </p>
+
+                  {/* Quick Prompts Grid */}
+                  <div className="grid grid-cols-2 gap-3 max-w-3xl w-full">
+                    {quickPrompts.map((prompt, idx) => (
+                      <motion.button
+                        key={idx}
+                        onClick={() => sendAdminMessage(prompt.prompt)}
+                        disabled={streaming}
+                        className={`p-4 rounded-xl border transition-all text-left ${
+                          streaming
+                            ? "opacity-50 cursor-not-allowed"
+                            : "hover:scale-[1.02] active:scale-[0.98]"
+                        } ${
+                          prompt.color === "cyan"
+                            ? "bg-cyan-500/10 border-cyan-500/30 hover:bg-cyan-500/20"
+                            : prompt.color === "emerald"
+                            ? "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20"
+                            : prompt.color === "purple"
+                            ? "bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20"
+                            : prompt.color === "rose"
+                            ? "bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/20"
+                            : prompt.color === "amber"
+                            ? "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20"
+                            : "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20"
+                        }`}
+                        whileHover={{ scale: streaming ? 1 : 1.02 }}
+                        whileTap={{ scale: streaming ? 1 : 0.98 }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-lg ${
+                            prompt.color === "cyan" ? "bg-cyan-500/20" :
+                            prompt.color === "emerald" ? "bg-emerald-500/20" :
+                            prompt.color === "purple" ? "bg-purple-500/20" :
+                            prompt.color === "rose" ? "bg-rose-500/20" :
+                            prompt.color === "amber" ? "bg-amber-500/20" :
+                            "bg-blue-500/20"
+                          }`}>
+                            <prompt.icon className={`w-5 h-5 ${
+                              prompt.color === "cyan" ? "text-cyan-400" :
+                              prompt.color === "emerald" ? "text-emerald-400" :
+                              prompt.color === "purple" ? "text-purple-400" :
+                              prompt.color === "rose" ? "text-rose-400" :
+                              prompt.color === "amber" ? "text-amber-400" :
+                              "text-blue-400"
+                            }`} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-semibold text-sm text-slate-200 mb-1">
+                              {prompt.label}
+                            </div>
+                            <div className="text-xs text-slate-400 line-clamp-2">
+                              {prompt.prompt}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
                   {messages.map((m, i) => {
                     const isAssistant = String(m.role).startsWith("assistant");
                     return (
@@ -743,47 +876,47 @@ export default function AdminAIAssistantPage() {
                     );
                   })}
                   <div ref={messagesEndRef} />
-                </div>
+                </>
+              )}
+            </div>
 
-                {/* Input Area */}
-                <div className="px-6 py-5 border-t border-slate-800/50 bg-slate-900/30">
-                  <div className="flex gap-3">
-                    <div className="flex-1 relative">
-                      <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        rows={1}
-                        placeholder="Type your message as admin..."
-                        disabled={streaming}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700/50 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-all resize-none disabled:opacity-50"
-                        style={{ minHeight: "48px", maxHeight: "120px" }}
-                      />
-                    </div>
-                    <button
-                      onClick={sendAdminMessage}
-                      disabled={streaming || !input.trim()}
-                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold shadow-lg shadow-purple-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {streaming ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-5 h-5" />
-                          Send
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
-                    <span>💡</span> Press Enter to send, Shift+Enter for new line
-                  </p>
+            {/* Input Area */}
+            <div className="px-6 py-5 border-t border-slate-800/50 bg-slate-900/30">
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    rows={1}
+                    placeholder="Ask about analytics, performance, or trends..."
+                    disabled={streaming}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700/50 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-all resize-none disabled:opacity-50"
+                    style={{ minHeight: "48px", maxHeight: "120px" }}
+                  />
                 </div>
-              </>
-            )}
+                <button
+                  onClick={() => sendAdminMessage()}
+                  disabled={streaming || !input.trim()}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold shadow-lg shadow-purple-500/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {streaming ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      Analyze
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                <span>💡</span> Press Enter to send, or use quick prompts for common analyses
+              </p>
+            </div>
           </motion.div>
         </div>
       </div>
@@ -798,11 +931,11 @@ export default function AdminAIAssistantPage() {
           border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(71, 85, 105, 0.5);
+          background: rgba(139, 92, 246, 0.5);
           border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(71, 85, 105, 0.7);
+          background: rgba(139, 92, 246, 0.7);
         }
       `}</style>
     </div>

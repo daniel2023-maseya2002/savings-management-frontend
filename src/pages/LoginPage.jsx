@@ -54,6 +54,12 @@ export default function LoginPage() {
         device_id: getDeviceId(),
       });
 
+      console.log("[Login] Response received:", { 
+        hasAccess: !!res.data.access, 
+        hasRefresh: !!res.data.refresh,
+        isStaff: res.data?.is_staff 
+      });
+
       // Handle remember me
       if (rememberMe) {
         localStorage.setItem("savedUsername", form.username.trim());
@@ -61,26 +67,56 @@ export default function LoginPage() {
         localStorage.removeItem("savedUsername");
       }
 
-      // Save the user in context
-      login(res.data);
+      // CRITICAL: Save tokens to localStorage FIRST before anything else
+      if (res.data.access) {
+        localStorage.setItem("access_token", res.data.access);
+        localStorage.setItem("access", res.data.access);
+        localStorage.setItem("token", res.data.access);
+        console.log("[Login] Access token saved");
+      }
+      
+      if (res.data.refresh) {
+        localStorage.setItem("refresh_token", res.data.refresh);
+        localStorage.setItem("refresh", res.data.refresh);
+        console.log("[Login] Refresh token saved");
+      }
+
+      // Update axios default headers immediately
+      if (axiosInstance.defaults && axiosInstance.defaults.headers) {
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${res.data.access}`;
+        console.log("[Login] Axios headers updated");
+      }
+
+      // Save the user in context (await if it returns a promise)
+      if (login && typeof login === 'function') {
+        const loginResult = login(res.data);
+        if (loginResult && typeof loginResult.then === 'function') {
+          await loginResult;
+        }
+        console.log("[Login] Context updated");
+      }
       
       // Success notification
-      toast.success("Welcome back! Redirecting you now...", {
+      toast.success("Welcome back!", {
         position: "top-right",
-        autoClose: 3000,
+        autoClose: 2000,
         hideProgressBar: false,
       });
 
-      // Redirect based on role
-      setTimeout(() => {
-        if (res.data?.is_staff) {
-          navigate("/admin");
-        } else {
-          navigate("/dashboard");
-        }
-      }, 1000); // Small delay for better UX
+      // Small delay to ensure everything is set
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Redirect based on role with replace: true to prevent back button issues
+      const destination = res.data?.is_staff ? "/admin" : "/dashboard";
+      console.log("[Login] Navigating to:", destination);
+      
+      navigate(destination, { 
+        replace: true,
+        state: { from: 'login' }
+      });
 
     } catch (err) {
+      console.error("[Login] Error:", err);
       const status = err?.response?.status;
       const data = err?.response?.data;
       
