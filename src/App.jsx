@@ -52,6 +52,10 @@ import TransactionAdminChangePage from "./pages/TransactionAdminChangePage";
 import AdminPeerTransfersPage from "./pages/AdminPeerTransfersPage";
 import PeerTransfersPage from "./pages/PeerTransfersPage";
 
+// 🆕 AI Assistant pages (new)
+import AIAssistantPage from "./pages/AIAssistantPage"; // regular user AI interface
+import AdminAIAssistantPage from "./pages/AdminAIAssistantPage"; // admin AI management / viewer
+
 // Utils
 import { useGlobalLoading } from "./utils/axiosLoading";
 
@@ -176,6 +180,18 @@ function AppContent() {
           }
         />
 
+        {/* 🆕 AI Assistant (regular user) */}
+        <Route
+          path="/ai"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <AIAssistantPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* === Chat routes for regular users === */}
         <Route
           path="/chat"
@@ -274,6 +290,18 @@ function AppContent() {
           }
         />
 
+        {/* 🆕 Admin AI assistant / management */}
+        <Route
+          path="/admin/ai"
+          element={
+            <AdminRoute>
+              <AppLayout>
+                <AdminAIAssistantPage />
+              </AppLayout>
+            </AdminRoute>
+          }
+        />
+
         {/* ✅ Admin Chat viewer */}
         <Route
           path="/admin/chat"
@@ -322,7 +350,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <AppContent />
-        </BrowserRouter>  
+        </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   );

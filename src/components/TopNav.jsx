@@ -20,6 +20,7 @@ export default function TopNav() {
     if (!loading && user) loadNotifications();
     const iv = user ? setInterval(loadNotifications, 30000) : null;
     return () => iv && clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading]);
 
   const loadNotifications = async () => {
@@ -63,7 +64,7 @@ export default function TopNav() {
   // 🕐 Prevent reload loop while AuthContext restores session
   if (loading) {
     return (
-      <div className="fixed top-0 left-0 right-0 bg-[#0f172a] h-14 flex items-center justify-center text-gray-400 text-sm">
+      <div className="fixed top-0 left-0 right-0 bg-[#0f172a] h-14 flex items-center justify-center text-gray-400 text-sm z-50">
         Loading...
       </div>
     );
@@ -77,9 +78,32 @@ export default function TopNav() {
         {/* 🪙 Logo */}
         <Link
           to={user.is_staff ? "/admin" : "/dashboard"}
-          className="text-lg font-semibold text-emerald-400 hover:text-emerald-300 transition"
+          className="flex items-center gap-2.5 group transition-transform duration-300 hover:scale-105"
         >
-          Credit<span className="text-white">Jambo</span>
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-lg blur-sm opacity-50 group-hover:opacity-75 transition-all duration-300"></div>
+            <div className="relative p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-lg group-hover:shadow-emerald-500/50 transition-all duration-300">
+              <svg
+                className="w-5 h-5 text-white transform group-hover:rotate-12 transition-transform duration-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent group-hover:from-emerald-300 group-hover:via-cyan-300 group-hover:to-emerald-300 transition-all duration-300">
+              Saving
+            </span>
+            <span className="text-xl font-bold text-white group-hover:text-gray-100 transition-colors duration-300">DM</span>
+          </div>
         </Link>
 
         {/* 🌐 Desktop Navigation */}
@@ -92,6 +116,8 @@ export default function TopNav() {
               <NavLink to="/withdraw" label="Withdraw" />
               {/* 🆕 Peer transfers for normal users */}
               <NavLink to="/peer/transfers" label="Peer Transfers" />
+              {/* AI Assistant for normal users */}
+              <NavLink to="/ai" label="AI Assistant" />
               {/* Chat link for regular users */}
               <NavLink to="/chat" label="Chat" />
             </>
@@ -104,6 +130,8 @@ export default function TopNav() {
               <NavLink to="/admin/logins" label="Logins" />
               {/* 🆕 Peer transfers admin view */}
               <NavLink to="/admin/peer/transfers" label="Peer Transfers" />
+              {/* Admin AI assistant / review page */}
+              <NavLink to="/admin/ai" label="AI Assistant" />
               {/* Admin Chat link */}
               <NavLink to="/admin/chat" label="Admin Chat" />
             </>
@@ -238,6 +266,8 @@ export default function TopNav() {
                       <NavLink to="/withdraw" label="Withdraw" />
                       {/* 🆕 Peer transfers (mobile) */}
                       <NavLink to="/peer/transfers" label="Peer Transfers" />
+                      {/* AI Assistant (mobile) */}
+                      <NavLink to="/ai" label="AI Assistant" />
                       {/* Chat link for regular users (mobile) */}
                       <NavLink to="/chat" label="Chat" />
                     </>
@@ -253,6 +283,8 @@ export default function TopNav() {
                         to="/admin/peer/transfers"
                         label="Peer Transfers"
                       />
+                      {/* Admin AI assistant (mobile) */}
+                      <NavLink to="/admin/ai" label="AI Assistant" />
                       {/* Admin Chat link (mobile) */}
                       <NavLink to="/admin/chat" label="Admin Chat" />
                     </>
