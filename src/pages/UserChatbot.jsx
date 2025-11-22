@@ -1,7 +1,8 @@
 // src/pages/UserChatbot.jsx
 import { useEffect, useRef, useState } from "react";
 import { ENDPOINTS, apiGet, apiPost, clearAuth } from "../lib/chatAuth";
-import HistoryChatbot from "./historyChatbot";
+import HistoryChatbot from "./HistoryChatbot";
+
 
 /**
  * Fully optimized dark-themed chatbot UI with collapsible sidebar

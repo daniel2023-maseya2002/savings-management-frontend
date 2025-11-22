@@ -20,8 +20,9 @@ import LoadingOverlay from "./components/ui/LoadingOverlay";
 // Chat components (NEW)
 import ChatBot from "./components/ui/chatbot"; // floating widget (for non-admin users)
 import AdminChatViewer from "./pages/AdminChatViewer";
+import HistoryChatbot from "./pages/HistoryChatbot";
 import UserChatbot from "./pages/UserChatbot";
-import HistoryChatbot from "./pages/historyChatbot";
+
 
 // Pages
 import AdminAnalyticsPage from "./pages/AdminAnalyticsPage";
