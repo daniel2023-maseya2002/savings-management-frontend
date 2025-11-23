@@ -3,13 +3,19 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { setupAxiosInterceptors } from "../utils/axiosLoading";
 
+// 🌐 Default remote API (Fly.io backend)
+const DEFAULT_REMOTE_API = "https://creditjambo-backend.fly.dev/api";
+
 // ✅ Base URL — works in both Vite and CRA
 const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ||   // ✅ this one
-  import.meta.env.VITE_API_BASE ||       // (optional fallback)
-  process.env.REACT_APP_API_BASE_URL ||  // for CRA if ever needed
-  "http://127.0.0.1:8000/api";           // local default
+  import.meta.env.VITE_API_BASE_URL ||   // main env for Vite (recommended)
+  import.meta.env.VITE_API_BASE ||       // optional fallback
+  process.env.REACT_APP_API_BASE_URL ||  // CRA-style fallback
+  DEFAULT_REMOTE_API ||                  // 🔁 fallback to Fly backend
+  "http://127.0.0.1:8000/api";           // last resort: local dev
 
+// 🔍 Debug: see what your frontend is actually using
+console.log("[Axios] API_BASE =", API_BASE);
 
 // ✅ Create axios instance first
 const axiosInstance = axios.create({
@@ -34,11 +40,11 @@ export const tokenService = {
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user_info");
   },
-  
-  // NEW: Decode JWT to check expiry
+
+  // Decode JWT to check expiry
   isTokenExpiringSoon: (token, bufferMinutes = 2) => {
     if (!token) return true;
-    
+
     try {
       const base64Url = token.split(".")[1];
       const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -49,12 +55,12 @@ export const tokenService = {
           .join("")
       );
       const { exp } = JSON.parse(jsonPayload);
-      
+
       if (!exp) return true;
-      
+
       const now = Math.floor(Date.now() / 1000);
       const bufferSeconds = bufferMinutes * 60;
-      
+
       // Return true if token expires within buffer time
       return exp - now < bufferSeconds;
     } catch (error) {
@@ -62,11 +68,11 @@ export const tokenService = {
       return true;
     }
   },
-  
-  // NEW: Get token expiry info
+
+  // Get token expiry info
   getTokenExpiry: (token) => {
     if (!token) return null;
-    
+
     try {
       const base64Url = token.split(".")[1];
       const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -77,9 +83,9 @@ export const tokenService = {
           .join("")
       );
       const { exp } = JSON.parse(jsonPayload);
-      
+
       if (!exp) return null;
-      
+
       return {
         expiresAt: new Date(exp * 1000),
         secondsRemaining: exp - Math.floor(Date.now() / 1000),
@@ -94,11 +100,11 @@ export const tokenService = {
 axiosInstance.interceptors.request.use(
   async (config) => {
     let access = tokenService.getAccess();
-    
-    // NEW: Proactively refresh if token is expiring soon
+
+    // Proactively refresh if token is expiring soon
     if (access && tokenService.isTokenExpiringSoon(access)) {
       console.log("🔄 Token expiring soon, refreshing proactively...");
-      
+
       try {
         const newAccess = await refreshTokenSilently();
         if (newAccess) {
@@ -108,7 +114,7 @@ axiosInstance.interceptors.request.use(
         console.warn("Proactive refresh failed, will retry on 401:", error);
       }
     }
-    
+
     if (access) config.headers.Authorization = `Bearer ${access}`;
     return config;
   },
@@ -128,7 +134,7 @@ function addSubscriber(cb) {
   subscribers.push(cb);
 }
 
-// NEW: Silent refresh function (for proactive refresh)
+// Silent refresh function (for proactive refresh)
 async function refreshTokenSilently() {
   const refresh = tokenService.getRefresh();
   if (!refresh) return null;
@@ -141,7 +147,7 @@ async function refreshTokenSilently() {
   }
 
   isRefreshing = true;
-  
+
   try {
     const res = await axios.post(`${API_BASE}/auth/token/refresh/`, { refresh });
     const newAccess = res.data.access;
@@ -153,7 +159,7 @@ async function refreshTokenSilently() {
 
     onRefreshed(newAccess);
     console.log("✅ Token refreshed proactively");
-    
+
     return newAccess;
   } catch (error) {
     console.error("Silent refresh failed:", error);
@@ -229,29 +235,32 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-// NEW: Export utility to manually check/refresh token
+// 🔁 Export utility to manually check/refresh token
 export const checkAndRefreshToken = async () => {
   const access = tokenService.getAccess();
-  
+
   if (!access) {
     console.log("No access token");
     return false;
   }
-  
+
   const expiry = tokenService.getTokenExpiry(access);
   if (expiry) {
     console.log(`Token expires at: ${expiry.expiresAt.toLocaleString()}`);
-    console.log(`Time remaining: ${Math.floor(expiry.secondsRemaining / 60)} minutes`);
+    console.log(
+      `Time remaining: ${Math.floor(expiry.secondsRemaining / 60)} minutes`
+    );
   }
-  
+
   if (tokenService.isTokenExpiringSoon(access)) {
     console.log("Token expiring soon, refreshing...");
     const newToken = await refreshTokenSilently();
     return !!newToken;
   }
-  
+
   console.log("Token is still valid");
   return true;
 };
 
+export { API_BASE };
 export default axiosInstance;
