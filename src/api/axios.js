@@ -5,9 +5,11 @@ import { setupAxiosInterceptors } from "../utils/axiosLoading";
 
 // ✅ Base URL — works in both Vite and CRA
 const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  process.env.REACT_APP_API_BASE_URL ||
-  "http://127.0.0.1:8000/api";
+  import.meta.env.VITE_API_BASE_URL ||   // ✅ this one
+  import.meta.env.VITE_API_BASE ||       // (optional fallback)
+  process.env.REACT_APP_API_BASE_URL ||  // for CRA if ever needed
+  "http://127.0.0.1:8000/api";           // local default
+
 
 // ✅ Create axios instance first
 const axiosInstance = axios.create({
