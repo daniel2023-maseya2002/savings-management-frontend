@@ -3,17 +3,11 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { setupAxiosInterceptors } from "../utils/axiosLoading";
 
-// 🌐 Default remote API (Fly.io backend)
-const DEFAULT_REMOTE_API = "https://creditjambo-backend.fly.dev/api";
-
-// ✅ Base URL — works in both Vite and CRA
 const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ||   // main env for Vite (recommended)
-  import.meta.env.VITE_API_BASE ||       // optional fallback
-  process.env.REACT_APP_API_BASE_URL ||  // CRA-style fallback
-  DEFAULT_REMOTE_API ||                  // 🔁 fallback to Fly backend
-  "http://127.0.0.1:8000/api";           // last resort: local dev
-
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_BASE ||
+  process.env.REACT_APP_API_BASE_URL ||
+  "http://127.0.0.1:8000/api"; // only used in local dev
 // 🔍 Debug: see what your frontend is actually using
 console.log("[Axios] API_BASE =", API_BASE);
 
